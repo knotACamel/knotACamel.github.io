@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Planner | CS 499 ePortfolio</title>
+<meta name="description" content="Dustin Ledbetter — Computer Science capstone ePortfolio, Southern New Hampshire University.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+
+<nav class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">Dustin Ledbetter</a>
+    <a class="navlink" href="index.html">Home</a><a class="navlink" href="code-review.html">Code Review</a><a class="navlink" href="enhancement-1.html">Software Design</a><a class="navlink active" href="enhancement-2.html">Algorithms</a><a class="navlink" href="enhancement-3.html">Databases</a>
+  </div>
+</nav>
+
+<header class="page">
+  <p class="eyebrow">Enhancement 2 — Algorithms and Data Structures</p>
+  <h1>Course Planner</h1>
+  <p class="tagline">A course catalog application that loads records from CSV, prints the catalog in alphabetical order, and looks up prerequisites.</p>
+</header>
+
+<main>
+<section>
+  <ul class="tags"><li>C++</li><li>AVL Tree</li><li>Self-Balancing BST</li><li>Invariant Validation</li></ul>
+  <p class="lede">A course catalog application that loads records from CSV, prints the catalog in alphabetical order, and looks up prerequisites. The enhancement converted the unbalanced binary search tree into a self-balancing AVL tree and added height invariant validation.</p>
+  <p><strong>Original course:</strong> CS 260 — Data Structures and Algorithms</p>
+</section>
+
+<section>
+  <h2>Narrative</h2>
+  <div class="narrative"><p>This artifact is from DSA which I took about a year ago. We created an application that takes course catalog entries and sorts them into a BST. It had the functionality to load a course catalog from a csv file, print the full catalog in alphabetical order, and look up a course to display its prerequisites. The original artifact was 260 lines and included a Course struct, Node struct, a BinarySearchTree class, a loadCrs file reader, and a menu loop in main.</p>
+<p>I included this artifact because it was already the product of a data structure decision, so enhancing it continues along that line of improvement rather than attaching an algorithm to a project that never included and doesn’t require one. It also included two operations with different structural needs, and those are ordered listing and keyed lookup. For those reasons, this made a good project for discussing and improving on the structural choices to meet the needs of enhancement 2. The original artifact included components that prove competency in making structural decisions as they relate to algorithms, but were limited due to the choice of structure. A BST was a good choice at the time, but looking back, an AVL tree makes an even better structure to build this artifact into.</p>
+<p>Some components that are worth mentioning are the AVLTree::insert in AVLTree.cpp, rotateLeft and rotateRight which are pointers dealing with height recalculation, and validate() which checks stored heights against computed heights. I met outcome 3 here with the AVL conversion design decision and outcome 4 where I used invariant validation rather than output inspection.</p></div>
+</section>
+
+<section>
+  <h2>What changed, and why</h2>
+  <div class="card"><h3>Why AVL, and why not a hash table</h3><p>The application has two operations with different structural needs: ordered listing and keyed lookup. A hash table would win on lookup alone but cannot produce sorted output without a separate sort on every listing. An AVL tree serves both, guaranteeing O(log n) lookup while keeping in-order traversal free.</p></div><div class="card"><h3>Rotations and height bookkeeping</h3><p>rotateLeft and rotateRight rebalance on insert, recalculating stored heights as pointers are rewired. This is where the original BST degraded: alphabetically sorted input produced a effectively linked list with O(n) lookup.</p></div><div class="card"><h3>Correctness by invariant, not by eyeballing output</h3><p>validate() checks every stored height against its computed height and confirms the balance factor at each node stays within ±1. That catches a broken rotation immediately, rather than hoping a wrong answer happens to be visible in output.</p></div>
+</section>
+
+<section>
+  <h2>Original vs. Enhanced</h2>
+  <p>Use the <strong>Original</strong> and <strong>Enhanced</strong> tabs to compare each file.
+  Code is collapsed by default.</p>
+  <div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">ProjectTwo.cpp</span>
+    <span class="viewer-note">Menu and program flow, rewired to the AVL tree and split away from the structure itself.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v5-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v5-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v5-original" data-version="original" role="tabpanel"><pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;fstream&gt;
+#include &lt;sstream&gt;
+#include &lt;vector&gt;
+
+using namespace std;
+//struct to hold course data
+struct Course {
+    string courseId;
+    string title;
+    vector&lt;string&gt; prereq;
+
+    Course() {
+        courseId = &quot;&quot;;
+        title = &quot;&quot;;
+    }
+};
+//struct for nodes
+struct Node {
+    Course course;
+    Node *left;
+    Node *right;
+
+    Node() {
+        left = nullptr;
+        right = nullptr;
+    }
+
+    Node(Course aCourse) : Node() {
+        course = aCourse;
+    }
+};
+//bst class 
+class BinarySearchTree {
+
+private:
+    Node* root;
+
+    void addNode(Node* node, Course course);
+    void inOrder(Node* node);
+    void postOrder(Node* node);
+    void preOrder(Node* node);
+    void destroyTree(Node* node);
+
+public:
+    BinarySearchTree();
+    virtual ~BinarySearchTree();
+    void InOrder();
+    void PostOrder();
+    void PreOrder();
+    void Insert(Course course);
+    Course Search(string courseId);
+};
+//method loading courses
+void loadCrs(string filePath, BinarySearchTree* bst) {
+    ifstream file(filePath);
+    if (!file.is_open()) {
+        cout &lt;&lt; &quot;Error&quot; &lt;&lt; endl;
+        return;
+    }
+
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string item;
+
+        Course course;
+
+        if (getline(ss, item, &#x27;,&#x27;)) {
+            course.courseId = item;
+        }
+        if (getline(ss, item, &#x27;,&#x27;)) {
+            course.title = item;
+        }
+        while (getline(ss, item, &#x27;,&#x27;)) {
+            if (!item.empty()) {
+                course.prereq.push_back(item);
+            }
+        }
+
+        if (!course.courseId.empty() &amp;&amp; !course.title.empty()) {
+            bst-&gt;Insert(course);
+        }
+    }
+    file.close();
+}
+
+/**
+ * Default constructor
+ */
+BinarySearchTree::BinarySearchTree() {
+    root = nullptr;
+}
+
+/**
+ * Destructor
+ */
+BinarySearchTree::~BinarySearchTree() {
+    destroyTree(root);  
+}
+//recursive deletion of bst 
+void BinarySearchTree::destroyTree(Node* node) {
+    if (node == nullptr) {
+        return;
+    }
+    else{
+        destroyTree(node-&gt;left);
+        destroyTree(node-&gt;right);
+        delete node;
+    }
+}
+
+void BinarySearchTree::InOrder() {
+    inOrder(root);
+}
+
+void BinarySearchTree::PostOrder() {
+    postOrder(root);
+}
+
+void BinarySearchTree::PreOrder() {
+    preOrder(root);
+}
+
+void BinarySearchTree::Insert(Course course) {
+    if (root == nullptr) {
+        root = new Node(course);
+    }
+
+    else {
+        addNode(root, course);
+    }
+
+}
+
+Course BinarySearchTree::Search(string courseId) {
+    Node* currNode = root;
+    while (currNode != nullptr){
+        if (currNode-&gt;course.courseId == courseId){
+            return currNode-&gt;course;
+        }
+        else if (currNode-&gt;course.courseId &gt; courseId) {
+            currNode = currNode-&gt;left;
+        }
+        else if (currNode-&gt;course.courseId &lt; courseId) {
+            currNode = currNode-&gt;right;
+        }
+    }
+        
+        
+    Course course;
+    return course;
+}
+
+void BinarySearchTree::addNode(Node* node, Course course) {
+    if (node-&gt;course.courseId &gt; course.courseId) {
+        if (node-&gt;left == nullptr){
+            node-&gt;left = new Node(course);
+        }
+        else {
+            addNode(node-&gt;left, course);
+        }
+    }
+
+    else{
+        if (node-&gt;right == nullptr){
+            node-&gt;right = new Node(course);
+        }
+
+        else {
+            addNode(node-&gt;right, course);
+        }
+    }
+}
+void BinarySearchTree::inOrder(Node* node) {
+      if (node != nullptr){
+        inOrder(node-&gt;left);
+        displayCourse(node-&gt;course);
+        inOrder(node-&gt;right);
+      }
+}
+void BinarySearchTree::postOrder(Node* node) {
+    if (node != nullptr){
+    postOrder(node-&gt;left);
+    postOrder(node-&gt;right);
+    displayCourse(node-&gt;course);
+    }
+
+}
+
+void BinarySearchTree::preOrder(Node* node) {
+    if (node != nullptr){
+    displayCourse(node-&gt;course);
+    preOrder(node-&gt;left);
+    preOrder(node-&gt;right);
+    }    
+}
+
+void displayCourse(Course course) {
+    cout &lt;&lt; course.courseId &lt;&lt; &quot;: &quot; &lt;&lt; course.title &lt;&lt; endl;
+
+    if (!course.prereq.empty()) {
+        cout &lt;&lt; endl &lt;&lt; &quot;Prerequisites: &quot;;
+        for (size_t i = 0; i &lt; course.prereq.size(); ++i) {
+            cout &lt;&lt; course.prereq[i];
+            if (i &lt; course.prereq.size() - 1) {
+                cout &lt;&lt; &quot;, &quot;;
+            }
+        }
+    }
+    cout &lt;&lt; endl;
+}
+
+
+int main() {
+    BinarySearchTree* bst = new BinarySearchTree();
+    string fileName;
+    int choice = 0;
+
+    while (choice != 9) {
+        cout &lt;&lt; &quot;Menu: &quot; &lt;&lt; endl;
+        cout &lt;&lt; &quot;1. Load Course Data&quot; &lt;&lt; endl;
+        cout &lt;&lt; &quot;2. Print Course List&quot; &lt;&lt; endl;
+        cout &lt;&lt; &quot;3. Print Course Information&quot; &lt;&lt; endl;
+        cout &lt;&lt; &quot;9. Exit&quot; &lt;&lt; endl;
+        cout &lt;&lt; &quot;Enter choice: &quot;;
+        cin &gt;&gt; choice;
+
+        switch(choice) {
+            case 1:
+                cout &lt;&lt; &quot;Enter file name: &quot;;
+                cin &gt;&gt; fileName;
+                loadCrs(fileName, bst);
+                break;
+            case 2:
+                bst-&gt;InOrder();
+                break;
+            case 3: {
+                cout &lt;&lt; &quot;Enter Course ID: &quot;;
+                string courseId;
+                cin &gt;&gt; courseId;
+                Course course = bst-&gt;Search(courseId);
+                if (!course.courseId.empty()) {
+                    displayCourse(course);
+                }
+                else {
+                    cout &lt;&lt; &quot;Course &quot; &lt;&lt; courseId &lt;&lt; &quot; not found.&quot; &lt;&lt;endl;
+                }
+                break;
+            }
+            default:
+                cout &lt;&lt; &quot;Invalid choice&quot; &lt;&lt; endl;
+                break;
+
+        }
+    }
+
+    delete bst;
+    return 0;
+}</code></pre></div><div class="pane" id="v5-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-cpp">#include &lt;fstream&gt;
+#include &lt;iostream&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+#include &quot;AVLTree.h&quot;
+
+namespace {
+
+// Strips leading and trailing whitespace
+std::string trim(const std::string&amp; text) {
+    const std::string blanks = &quot; \t\r\n&quot;;
+    const std::size_t first = text.find_first_not_of(blanks);
+    if (first == std::string::npos) {
+        return &quot;&quot;;
+    }
+    const std::size_t last = text.find_last_not_of(blanks);
+    return text.substr(first, last - first + 1);
+}
+
+// Parses one CSV row: courseId,title[,prereq...]
+// Returns an empty Course if the row has no id or no title.
+Course parseRow(const std::string&amp; line) {
+    std::stringstream row(line);
+    std::string field;
+    Course course;
+
+    if (std::getline(row, field, &#x27;,&#x27;)) {
+        course.courseId = trim(field);
+    }
+    if (std::getline(row, field, &#x27;,&#x27;)) {
+        course.title = trim(field);
+    }
+    while (std::getline(row, field, &#x27;,&#x27;)) {
+        const std::string prereq = trim(field);
+        if (!prereq.empty()) {
+            course.prereq.push_back(prereq);
+        }
+    }
+
+    if (course.courseId.empty() || course.title.empty()) {
+        return Course();
+    }
+    return course;
+}
+
+bool loadCourses(const std::string&amp; path, AVLTree&amp; tree) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cout &lt;&lt; &quot;Could not open &#x27;&quot; &lt;&lt; path
+                  &lt;&lt; &quot;&#x27;. Check the name and the working directory.\n&quot;;
+        return false;
+    }
+
+    int read = 0;
+    int loaded = 0;
+    int skipped = 0;
+    int duplicates = 0;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        ++read;
+        if (trim(line).empty()) {
+            ++skipped;
+            continue;
+        }
+
+        const Course course = parseRow(line);
+        if (course.empty()) {
+            ++skipped;
+            continue;
+        }
+
+        // Duplicate policy: first record is kept
+        if (tree.insert(course)) {
+            ++loaded;
+        } else {
+            ++duplicates;
+        }
+    }
+
+    std::cout &lt;&lt; &quot;Loaded &quot; &lt;&lt; loaded &lt;&lt; &quot; of &quot; &lt;&lt; read &lt;&lt; &quot; rows.\n&quot;;
+    if (skipped &gt; 0) {
+        std::cout &lt;&lt; &quot;  &quot; &lt;&lt; skipped &lt;&lt; &quot; blank or malformed row(s) skipped.\n&quot;;
+    }
+    if (duplicates &gt; 0) {
+        std::cout &lt;&lt; &quot;  &quot; &lt;&lt; duplicates &lt;&lt; &quot; duplicate id(s) rejected.\n&quot;;
+    }
+    return loaded &gt; 0;
+}
+
+void displayCourse(const Course&amp; course) {
+    std::cout &lt;&lt; course.courseId &lt;&lt; &quot;: &quot; &lt;&lt; course.title &lt;&lt; &quot;\n&quot;;
+    if (!course.prereq.empty()) {
+        std::cout &lt;&lt; &quot;  Prerequisites: &quot;;
+        for (std::size_t i = 0; i &lt; course.prereq.size(); ++i) {
+            std::cout &lt;&lt; (i == 0 ? &quot;&quot; : &quot;, &quot;) &lt;&lt; course.prereq[i];
+        }
+        std::cout &lt;&lt; &quot;\n&quot;;
+    }
+}
+
+void printMenu() {
+    std::cout &lt;&lt; &quot;\nABCU Course Advising\n&quot;
+              &lt;&lt; &quot;  1. Load course data\n&quot;
+              &lt;&lt; &quot;  2. Print course list\n&quot;
+              &lt;&lt; &quot;  3. Print course information\n&quot;
+              &lt;&lt; &quot;  9. Exit\n&quot;
+              &lt;&lt; &quot;Enter choice: &quot;;
+}
+
+// Reads a whole line so a non-numeric entry cannot leave cin in a failed state
+bool readChoice(int&amp; choice) {
+    std::string line;
+    if (!std::getline(std::cin, line)) {
+        return false;
+    }
+    std::istringstream parser(line);
+    if (!(parser &gt;&gt; choice)) {
+        choice = -1;
+    }
+    return true;
+}
+
+bool readLine(const std::string&amp; prompt, std::string&amp; value) {
+    std::cout &lt;&lt; prompt;
+    return static_cast&lt;bool&gt;(std::getline(std::cin, value));
+}
+
+void handleLoad(AVLTree*&amp; catalog) {
+    std::string path;
+    if (!readLine(&quot;Enter file name: &quot;, path)) {
+        return;
+    }
+
+    // Loading into a fresh tree keeps a failed load from leaving a half
+    // populated catalog behind.
+    AVLTree* loading = new AVLTree();
+    if (!loadCourses(trim(path), *loading)) {
+        delete loading;
+        std::cout &lt;&lt; &quot;Catalog unchanged.\n&quot;;
+        return;
+    }
+
+    delete catalog;
+    catalog = loading;
+
+    std::cout &lt;&lt; &quot;Catalog ready: &quot; &lt;&lt; catalog-&gt;size() &lt;&lt; &quot; courses, tree height &quot;
+              &lt;&lt; catalog-&gt;height() &lt;&lt; &quot;.\n&quot;;
+}
+
+void handleList(const AVLTree* catalog) {
+    if (catalog == nullptr) {
+        std::cout &lt;&lt; &quot;Load course data first (option 1).\n&quot;;
+        return;
+    }
+    catalog-&gt;inOrder(displayCourse);
+}
+
+void handleFind(const AVLTree* catalog) {
+    if (catalog == nullptr) {
+        std::cout &lt;&lt; &quot;Load course data first (option 1).\n&quot;;
+        return;
+    }
+
+    std::string courseId;
+    if (!readLine(&quot;Enter course ID: &quot;, courseId)) {
+        return;
+    }
+
+    const Course course = catalog-&gt;search(trim(courseId));
+    if (course.empty()) {
+        std::cout &lt;&lt; &quot;Course &quot; &lt;&lt; courseId &lt;&lt; &quot; not found.\n&quot;;
+        return;
+    }
+    displayCourse(course);
+}
+
+}
+
+int main() {
+    AVLTree* catalog = nullptr;
+    int choice = 0;
+
+    while (true) {
+        printMenu();
+        if (!readChoice(choice)) {
+            break; 
+        }
+
+        if (choice == 9) {
+            std::cout &lt;&lt; &quot;Goodbye.\n&quot;;
+            break;
+        }
+
+        switch (choice) {
+            case 1:
+                handleLoad(catalog);
+                break;
+            case 2:
+                handleList(catalog);
+                break;
+            case 3:
+                handleFind(catalog);
+                break;
+            default:
+                std::cout &lt;&lt; choice &lt;&lt; &quot; is not a valid option.\n&quot;;
+                break;
+        }
+    }
+
+    delete catalog;
+    return 0;
+}
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">AVLTree.h</span>
+    <span class="viewer-note">New file. Interface for the self-balancing tree.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="false" aria-controls="v6-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="true" aria-controls="v6-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v6-original" data-version="original" role="tabpanel" hidden><p class="empty-pane">Not present in the original artifact — this file was added as part of the enhancement.</p></div><div class="pane" id="v6-enhanced" data-version="enhanced" role="tabpanel"><pre><code class="language-cpp">#ifndef AVL_TREE_H
+#define AVL_TREE_H
+
+#include &lt;functional&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+// One course record.
+struct Course {
+    std::string courseId;
+    std::string title;
+    std::vector&lt;std::string&gt; prereq;
+
+    // A default constructed Course is the &quot;not found&quot; result.
+    bool empty() const { return courseId.empty(); }
+};
+
+// Self balancing search tree keyed on courseId. Replaces the unbalanced
+// binary search tree in the original artifact.
+class AVLTree {
+public:
+    AVLTree();
+    ~AVLTree();
+
+    AVLTree(const AVLTree&amp;) = delete;
+    AVLTree&amp; operator=(const AVLTree&amp;) = delete;
+
+    // Returns false if courseId is already present.
+    bool insert(const Course&amp; course);
+
+    // Returns an empty Course when courseId is absent.
+    Course search(const std::string&amp; courseId) const;
+
+    // Keys come out in ascending order.
+    void inOrder(const std::function&lt;void(const Course&amp;)&gt;&amp; visit) const;
+
+    int height() const;
+    int size() const;
+
+    // Confirms stored heights match their children
+    bool validate() const;
+
+private:
+    struct Node {
+        Course course;
+        Node* left = nullptr;
+        Node* right = nullptr;
+        int height = 0;
+    };
+
+    Node* root_;
+    int size_;
+
+    static int heightOf(const Node* node);
+    static void updateHeight(Node* node);
+    static int balanceOf(const Node* node);
+
+    Node* rotateRight(Node* node);
+    Node* rotateLeft(Node* node);
+    Node* rebalance(Node* node);
+
+    Node* insert(Node* node, const Course&amp; course, bool&amp; inserted);
+    void destroy(Node* node);
+    void inOrder(const Node* node, const std::function&lt;void(const Course&amp;)&gt;&amp; visit) const;
+    bool validate(const Node* node, int&amp; height, int&amp; count) const;
+};
+
+#endif
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">AVLTree.cpp</span>
+    <span class="viewer-note">New file. Insert, rotations, height maintenance, and validate().</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="false" aria-controls="v7-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="true" aria-controls="v7-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v7-original" data-version="original" role="tabpanel" hidden><p class="empty-pane">Not present in the original artifact — this file was added as part of the enhancement.</p></div><div class="pane" id="v7-enhanced" data-version="enhanced" role="tabpanel"><pre><code class="language-cpp">#include &quot;AVLTree.h&quot;
+
+#include &lt;algorithm&gt;
+
+AVLTree::AVLTree() : root_(nullptr), size_(0) {}
+
+AVLTree::~AVLTree() {
+    destroy(root_);
+}
+
+void AVLTree::destroy(Node* node) {
+    if (node == nullptr) {
+        return;
+    }
+    destroy(node-&gt;left);
+    destroy(node-&gt;right);
+    delete node;
+}
+
+// -1 for an empty subtree
+int AVLTree::heightOf(const Node* node) {
+    return node == nullptr ? -1 : node-&gt;height;
+}
+
+void AVLTree::updateHeight(Node* node) {
+    node-&gt;height = 1 + std::max(heightOf(node-&gt;left), heightOf(node-&gt;right));
+}
+
+int AVLTree::balanceOf(const Node* node) {
+    return node == nullptr ? 0 : heightOf(node-&gt;left) - heightOf(node-&gt;right);
+}
+
+AVLTree::Node* AVLTree::rotateRight(Node* node) {
+    Node* newRoot = node-&gt;left;
+    node-&gt;left = newRoot-&gt;right;
+    newRoot-&gt;right = node;
+
+    // The demoted node must be updated first, or the new root reads a stale height.
+    updateHeight(node);
+    updateHeight(newRoot);
+
+    return newRoot;
+}
+
+AVLTree::Node* AVLTree::rotateLeft(Node* node) {
+    Node* newRoot = node-&gt;right;
+    node-&gt;right = newRoot-&gt;left;
+    newRoot-&gt;left = node;
+
+    updateHeight(node);
+    updateHeight(newRoot);
+
+    return newRoot;
+}
+
+AVLTree::Node* AVLTree::rebalance(Node* node) {
+    const int balance = balanceOf(node);
+
+    // Left heavy. Straighten a right leaning child first, then rotate.
+    if (balance &gt; 1) {
+        if (balanceOf(node-&gt;left) &lt; 0) {
+            node-&gt;left = rotateLeft(node-&gt;left);
+        }
+        return rotateRight(node);
+    }
+
+    // Right heavy, mirrored.
+    if (balance &lt; -1) {
+        if (balanceOf(node-&gt;right) &gt; 0) {
+            node-&gt;right = rotateRight(node-&gt;right);
+        }
+        return rotateLeft(node);
+    }
+
+    return node;
+}
+
+bool AVLTree::insert(const Course&amp; course) {
+    bool inserted = false;
+    // Returning the subtree root is what lets a rotation change the parent&#x27;s
+    // pointer. The original addNode returned void and could not do this.
+    root_ = insert(root_, course, inserted);
+    return inserted;
+}
+
+AVLTree::Node* AVLTree::insert(Node* node, const Course&amp; course, bool&amp; inserted) {
+    if (node == nullptr) {
+        inserted = true;
+        ++size_;
+        return new Node{course, nullptr, nullptr, 0};
+    }
+
+    const int cmp = course.courseId.compare(node-&gt;course.courseId);
+
+    if (cmp &lt; 0) {
+        node-&gt;left = insert(node-&gt;left, course, inserted);
+    } else if (cmp &gt; 0) {
+        node-&gt;right = insert(node-&gt;right, course, inserted);
+    } else {
+        inserted = false;  // duplicate, tree unchanged
+        return node;
+    }
+
+    updateHeight(node);
+    return rebalance(node);
+}
+
+Course AVLTree::search(const std::string&amp; courseId) const {
+    const Node* current = root_;
+    while (current != nullptr) {
+        const int cmp = courseId.compare(current-&gt;course.courseId);
+        if (cmp == 0) {
+            return current-&gt;course;
+        }
+        current = cmp &lt; 0 ? current-&gt;left : current-&gt;right;
+    }
+    return Course();
+}
+
+void AVLTree::inOrder(const std::function&lt;void(const Course&amp;)&gt;&amp; visit) const {
+    inOrder(root_, visit);
+}
+
+void AVLTree::inOrder(const Node* node, const std::function&lt;void(const Course&amp;)&gt;&amp; visit) const {
+    if (node == nullptr) {
+        return;
+    }
+    inOrder(node-&gt;left, visit);
+    visit(node-&gt;course);
+    inOrder(node-&gt;right, visit);
+}
+
+int AVLTree::height() const {
+    return heightOf(root_);
+}
+
+int AVLTree::size() const {
+    return size_;
+}
+
+bool AVLTree::validate() const {
+    int height = 0;
+    int count = 0;
+    if (!validate(root_, height, count)) {
+        return false;
+    }
+    if (count != size_) {
+        return false;
+    }
+
+    // A rotation that rewires the wrong pointer can still leave heights
+    // consistent, so the key order is checked separately.
+    bool ordered = true;
+    bool first = true;
+    std::string previous;
+    inOrder([&amp;](const Course&amp; course) {
+        if (!first &amp;&amp; !(previous &lt; course.courseId)) {
+            ordered = false;
+        }
+        previous = course.courseId;
+        first = false;
+    });
+    return ordered;
+}
+
+bool AVLTree::validate(const Node* node, int&amp; height, int&amp; count) const {
+    if (node == nullptr) {
+        height = -1;
+        count = 0;
+        return true;
+    }
+
+    int leftHeight = 0;
+    int rightHeight = 0;
+    int leftCount = 0;
+    int rightCount = 0;
+
+    if (!validate(node-&gt;left, leftHeight, leftCount)) {
+        return false;
+    }
+    if (!validate(node-&gt;right, rightHeight, rightCount)) {
+        return false;
+    }
+
+    height = 1 + std::max(leftHeight, rightHeight);
+    count = leftCount + rightCount + 1;
+
+    if (node-&gt;height != height) {
+        return false;
+    }
+    const int balance = leftHeight - rightHeight;
+    return balance &gt;= -1 &amp;&amp; balance &lt;= 1;
+}
+</code></pre></div></div>
+</div>
+</section>
+
+<section>
+  <h2>Course outcome alignment</h2>
+  <div class="outcome"><strong>Outcome 3 — Design and evaluate computing solutions, managing trade-offs</strong><span>The AVL conversion was a deliberate structural decision weighed against the alternatives, accepting rotation cost on insert to buy a worst-case guarantee on lookup and to keep ordered traversal.</span></div><div class="outcome"><strong>Outcome 4 — Well-founded and innovative techniques, skills, and tools</strong><span>Verification through invariant validation rather than output inspection.</span></div>
+</section>
+
+<div class="pager"><a class="btn secondary" href="enhancement-1.html">&larr; Enhancement 1</a><a class="btn" href="enhancement-3.html">Enhancement 3 &rarr;</a></div>
+</main>
+
+<footer class="site">
+  <p>Dustin Ledbetter &middot; CS 499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/portfolio.js"></script>
+</body>
+</html>

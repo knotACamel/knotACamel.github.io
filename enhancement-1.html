@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Service | CS 499 ePortfolio</title>
+<meta name="description" content="Dustin Ledbetter — Computer Science capstone ePortfolio, Southern New Hampshire University.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+
+<nav class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">Dustin Ledbetter</a>
+    <a class="navlink" href="index.html">Home</a><a class="navlink" href="code-review.html">Code Review</a><a class="navlink active" href="enhancement-1.html">Software Design</a><a class="navlink" href="enhancement-2.html">Algorithms</a><a class="navlink" href="enhancement-3.html">Databases</a>
+  </div>
+</nav>
+
+<header class="page">
+  <p class="eyebrow">Enhancement 1 — Software Design and Engineering</p>
+  <h1>Contact Service</h1>
+  <p class="tagline">A contact management service built from two production classes and two JUnit test classes.</p>
+</header>
+
+<main>
+<section>
+  <ul class="tags"><li>Java</li><li>JUnit 5</li><li>HashMap</li><li>Input Validation</li><li>Singleton</li></ul>
+  <p class="lede">A contact management service built from two production classes and two JUnit test classes. The enhancement rebuilt the validation strategy so business constraints cannot be bypassed, and replaced the backing array with a HashMap keyed by contact ID.</p>
+  <p><strong>Original course:</strong> CS 320 — Software Testing, Automation, and Quality Assurance</p>
+</section>
+
+<section>
+  <h2>Narrative</h2>
+  <div class="narrative"><p>I have selected the contact management java files from CS 320 for enhancement 1. The artifact includes 2 production classes and 2 JUnit test classes. Contact is designed to instantiate single objects with 5 string fields with constructor(and now mutator) validation. ContactServices is designed to be a singleton pattern that manages instantiated Contact objects by adding, deleting, and updating them as needed.</p>
+<p>This artifact felt like a good fit for enhancement 1 because there were several things going on with it that were suboptimal and would benefit from the 2nd pass. Additionally, it sits between software design and testing, making it a great candidate here.</p>
+<p>The two big changes I’ll spend the most time speaking on are the HashMap implementation and the validation strategy in contact.java. In the original artifact, only the constructor contained logic for validating that arguments passed to the constructor conformed to constraints. The setters lacked any validation layer and as such, could be used to bypass business constraints implemented at the constructor level, thus rendering the work done there pointless as it was easily sidestepped. I like the solution I eventually landed on. Creating validation for every mutator seemed excessive and redundant. My idea was to isolate the validation to its own methods and force any mutator to go through that validation logic. This cuts down on repeated lines of code and standardizes the process, especially in the case where future mutators are added.</p>
+<p>The other enhancement was the implementation of the HashMap, keyed by contact ID, which replaced the previous array. This moved lookup, update, and delete operations from O(n) linear scans to O(1) average access. It also removed the max 9999 record constraint held by the previous solution.</p>
+<p>For course outcomes, this enhancement covers outcome 3 and outcome 4. Outcome 3 comes from the storage decision, and specifically from treating it as a trade rather than an upgrade. The HashMap costs more memory per record and gives up insertion order, but it wins here because this service is lookup heavy. Outcome 4 comes from the tools and the approach, using the collections framework and JUnit 5 to redesign the validation layer to route all mutators through methods whose sole responsibilities were to validate adherence to the given constraints.</p></div>
+</section>
+
+<section>
+  <h2>What changed, and why</h2>
+  <div class="card"><h3>Validation that cannot be sidestepped</h3><p>The original validated only in the constructor, so any setter could push an invalid value straight past the constraints. Validation now lives in dedicated methods that every mutator is required to route through, which also means a future setter inherits the rules instead of forgetting them.</p></div><div class="card"><h3>Array to HashMap</h3><p>Lookup, update, and delete moved from O(n) linear scans to O(1) average access, and the hard ceiling of 9,999 records disappeared with the fixed-size array.</p></div><div class="card"><h3>Test coverage that grew with the design</h3><p>The two test classes expanded from 87 lines to 462 as the new validation paths and collection behavior needed to be pinned down.</p></div>
+</section>
+
+<section>
+  <h2>Original vs. Enhanced</h2>
+  <p>Use the <strong>Original</strong> and <strong>Enhanced</strong> tabs to compare each file.
+  Code is collapsed by default.</p>
+  <div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">Contact.java</span>
+    <span class="viewer-note">Validation extracted into reusable methods; all mutators route through them.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v1-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v1-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v1-original" data-version="original" role="tabpanel"><pre><code class="language-java">package MS1;
+
+public class Contact {
+
+		private String contactID;
+		private String firstName;
+		private String lastName;
+		private String phone;
+		private String address;
+		
+		public Contact(
+				String contactID,
+				String firstName,
+				String lastName,
+				String phone,
+				String address) {
+			if (contactID == null || contactID.length() &gt; 10) {
+				throw new IllegalArgumentException(&quot;Invalid Contact ID&quot;);
+			}
+			if (firstName == null || firstName.length() &gt; 10) {
+				throw new IllegalArgumentException(&quot;Invalid First Name&quot;);
+			}
+			if (lastName == null || lastName.length() &gt; 10) {
+				throw new IllegalArgumentException(&quot;Invalid Last Name&quot;);
+			}
+			if (phone == null || phone.length() &gt; 10) {
+				throw new IllegalArgumentException(&quot;Invalid phone&quot;);
+			}
+			if (address == null || address.length() &gt; 10) {
+				throw new IllegalArgumentException(&quot;Invalid address&quot;);
+			}
+			
+			this.contactID = contactID;
+			this.firstName = firstName;
+			this.lastName = lastName;
+			this.phone = phone;
+			this.address = address;
+		}
+		
+		public String getID() {
+			return contactID;
+		}
+		
+		public String getFirst() {
+			return firstName;
+		}
+		public String getLast() {
+			return lastName;
+		}
+		public String getPhone() {
+			return phone;
+		}
+		public String getAddress() {
+			return address;
+		}
+		
+		public void setFirst(String firstName) {
+			this.firstName = firstName;
+		}
+		public void setLast(String lastName) {
+			this.lastName = lastName;
+		}
+		public void setPhone(String phone) {
+			this.phone = phone;
+		}
+		public void setAddress(String address) {
+			this.address = address;
+		}
+}
+</code></pre></div><div class="pane" id="v1-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-java">package MS1;
+
+public class Contact {
+
+    // Maximum length of the ID field.
+    private static final int MAX_ID_LENGTH = 10;
+    // Maximum length shared by both name fields.
+    private static final int MAX_NAME_LENGTH = 10;
+    // Required length of a phone number
+    private static final int PHONE_LENGTH = 10;
+    // Maximum length of the address field
+    private static final int MAX_ADDRESS_LENGTH = 30;
+
+    // Immutable unique identifier. Assigned at construction and never reassigned.
+    private final String contactID;
+
+    private String firstName;
+    private String lastName;
+    private String phone;
+    private String address;
+
+    // Constructor 
+    public Contact(String contactID,
+                   String firstName,
+                   String lastName,
+                   String phone,
+                   String address) {
+        this.contactID = validateId(contactID);
+        this.firstName = validateName(firstName, &quot;First name&quot;);
+        this.lastName = validateName(lastName, &quot;Last name&quot;);
+        this.phone = validatePhone(phone);
+        this.address = validateAddress(address);
+    }
+
+
+    // Validation methods for constructor and setter methods. All current and future
+    // methods that change internal variables shall run through these methods as a constraint validation layer. 
+    private static String validateId(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException(&quot;Contact ID must not be null&quot;);
+        }
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException(&quot;Contact ID must not be empty&quot;);
+        }
+        if (value.length() &gt; MAX_ID_LENGTH) {
+            throw new IllegalArgumentException(
+                    &quot;Contact ID must be at most &quot; + MAX_ID_LENGTH
+                            + &quot; characters but was &quot; + value.length());
+        }
+        return value;
+    }
+
+    private static String validateName(String value, String fieldName) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + &quot; must not be null&quot;);
+        }
+        if (value.length() &gt; MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    fieldName + &quot; must be at most &quot; + MAX_NAME_LENGTH
+                            + &quot; characters but was &quot; + value.length());
+        }
+        return value;
+    }
+
+    private static String validatePhone(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException(&quot;Phone must not be null&quot;);
+        }
+        if (value.length() != PHONE_LENGTH) {
+            throw new IllegalArgumentException(
+                    &quot;Phone must be exactly &quot; + PHONE_LENGTH
+                            + &quot; digits but was &quot; + value.length() + &quot; characters&quot;);
+        }
+        if (!value.matches(&quot;\\d{&quot; + PHONE_LENGTH + &quot;}&quot;)) {
+            throw new IllegalArgumentException(
+                    &quot;Phone must contain digits only but was \&quot;&quot; + value + &quot;\&quot;&quot;);
+        }
+        return value;
+    }
+
+    private static String validateAddress(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException(&quot;Address must not be null&quot;);
+        }
+        if (value.length() &gt; MAX_ADDRESS_LENGTH) {
+            throw new IllegalArgumentException(
+                    &quot;Address must be at most &quot; + MAX_ADDRESS_LENGTH
+                            + &quot; characters but was &quot; + value.length());
+        }
+        return value;
+    }
+
+    // Getters, all fields
+    public String getID() {
+        return contactID;
+    }
+
+    public String getFirst() {
+        return firstName;
+    }
+
+    public String getLast() {
+        return lastName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    // Setters, all fields minus immutable ID
+    // All setters go through validation methods to ensure compliance to constraints
+    public void setFirst(String firstName) {
+        this.firstName = validateName(firstName, &quot;First name&quot;);
+    }
+
+    public void setLast(String lastName) {
+        this.lastName = validateName(lastName, &quot;Last name&quot;);
+    }
+
+    public void setPhone(String phone) {
+        this.phone = validatePhone(phone);
+    }
+
+    public void setAddress(String address) {
+        this.address = validateAddress(address);
+    }
+
+    @Override
+    public String toString() {
+        return &quot;Contact{id=&quot; + contactID
+                + &quot;, name=&quot; + firstName + &quot; &quot; + lastName
+                + &quot;, phone=******&quot; + phone.substring(PHONE_LENGTH - 4)
+                + &quot;}&quot;;
+    }
+}
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">ContactServices.java</span>
+    <span class="viewer-note">Backing array replaced with a HashMap keyed by contact ID.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v2-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v2-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v2-original" data-version="original" role="tabpanel"><pre><code class="language-java">package MS1;
+
+public class ContactServices {
+	private static ContactServices instance;
+	private Contact[] contacts;
+	private int nextId;
+	private int contactCount;
+	private static final int MAX_CONTACTS = 9999;
+	
+	private ContactServices() {
+		this.contacts = new Contact[MAX_CONTACTS];
+		this.nextId = 1;
+		this.contactCount = 0;
+	}
+	
+	public static ContactServices getInstance() {
+		if (instance == null) {
+			instance = new ContactServices();
+		}
+		return instance;
+	}
+	
+	public String addContact(String firstName, String lastName, String phone, String address) {
+		if (contactCount &gt; MAX_CONTACTS) {
+			return null;
+		}
+		
+		String contactId = String.valueOf(nextId++);
+		Contact newContact = new Contact(contactId, firstName, lastName, phone, address);
+		contacts[contactCount++] = newContact;
+		
+		return contactId;
+	}
+	
+	public boolean deleteContact(String contactId) {
+		int index = findContactIndex(contactId);
+		if (index == -1) {
+			return false;
+		}
+		
+		for (int i = index; i &lt; contactCount - 1; i++) {
+			contacts[i] = contacts[i + 1];
+		}
+		contacts[--contactCount] = null;
+		
+		return true;
+	}
+	
+	private int findContactIndex(String contactId) {
+		for (int i = 0; i &lt; contactCount; i++) {
+			if (contacts[i].getID().equals(contactId)) {
+				return i;
+			}
+		}
+		
+		return -1;
+	}
+	
+	private Contact findContact(String contactId) {
+		for (int i = 0; i &lt; contactCount; i++) {
+			if (contacts[i].getID().equals(contactId)) {
+				return contacts[i];
+			}
+		}
+		
+		return null;
+	}
+	
+	public boolean updateFirstName(String contactId, String firstName) {
+		Contact contact = findContact(contactId);
+		if (contact != null) {
+			contact.setFirst(firstName);
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean updateLastName(String contactId, String lastName) {
+		Contact contact = findContact(contactId);
+		if (contact != null) {
+			contact.setLast(lastName);
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean updatePhone(String contactId, String phone) {
+		Contact contact = findContact(contactId);
+		if (contact != null) {
+			contact.setPhone(phone);
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean updateAddress(String contactId, String address) {
+		Contact contact = findContact(contactId);
+		if (contact != null) {
+			contact.setAddress(address);
+			return true;
+		}
+		return false;
+	}
+	
+	public void reset() {
+		contacts = new Contact
+	}
+	
+}
+</code></pre></div><div class="pane" id="v2-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-java">package MS1;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+// Singleton service holding all Contact records.
+public class ContactServices {
+
+    // The singleton instance
+    private static ContactServices instance;
+
+    // Contact storage keyed by contact ID. Never null or reassigned.
+    private final Map&lt;String, Contact&gt; contacts = new HashMap&lt;&gt;();
+
+    // Source of sequential contact identifiers.
+    private int nextId;
+
+    private ContactServices() {
+        this.nextId = 1;
+    }
+
+    public static ContactServices getInstance() {
+        if (instance == null) {
+            instance = new ContactServices();
+        }
+        return instance;
+    }
+
+    // Create
+
+    // Validation happens inside the Contact constructor, so invalid input throws before
+    // anything is stored and nextId is not consumed.
+    public String addContact(String firstName, String lastName, String phone, String address) {
+        String contactId = String.valueOf(nextId);
+        Contact newContact = new Contact(contactId, firstName, lastName, phone, address);
+        contacts.put(contactId, newContact);
+        nextId++;
+        return contactId;
+    }
+
+    // Delete
+
+    // Replaces the original find-then-shift-left loop
+    public boolean deleteContact(String contactId) {
+        return contacts.remove(contactId) != null;
+    }
+
+    // Read views
+
+    // Added so tests can confirm an update changed stored state
+    public Contact getContact(String contactId) {
+        return contacts.get(contactId);
+    }
+
+    // Replaces the original contactCount field
+    public int getContactCount() {
+        return contacts.size();
+    }
+
+    // Read-only view. 
+    public Map&lt;String, Contact&gt; getAllContacts() {
+        return Collections.unmodifiableMap(contacts);
+    }
+
+    // Update
+
+    // Single lookup shared by all four update methods.
+    private Contact findContact(String contactId) {
+        return contacts.get(contactId);
+    }
+
+    // Each update returns false for an unknown ID and delegates the value rules to the
+    // Contact setters, so an invalid value throws and leaves the record unchanged.
+    public boolean updateFirstName(String contactId, String firstName) {
+        Contact contact = findContact(contactId);
+        if (contact == null) {
+            return false;
+        }
+        contact.setFirst(firstName);
+        return true;
+    }
+
+    public boolean updateLastName(String contactId, String lastName) {
+        Contact contact = findContact(contactId);
+        if (contact == null) {
+            return false;
+        }
+        contact.setLast(lastName);
+        return true;
+    }
+
+    public boolean updatePhone(String contactId, String phone) {
+        Contact contact = findContact(contactId);
+        if (contact == null) {
+            return false;
+        }
+        contact.setPhone(phone);
+        return true;
+    }
+
+    public boolean updateAddress(String contactId, String address) {
+        Contact contact = findContact(contactId);
+        if (contact == null) {
+            return false;
+        }
+        contact.setAddress(address);
+        return true;
+    }
+
+    // Test support. Clears storage and restarts ID generation so each test starts clean
+    public void reset() {
+        contacts.clear();
+        nextId = 1;
+    }
+}
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">ContactTest.java</span>
+    <span class="viewer-note">Expanded to cover the new mutator validation paths.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v3-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v3-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v3-original" data-version="original" role="tabpanel"><pre><code class="language-java">package test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import MS1.Contact;
+
+class ContactTest {
+
+	@Test
+	void testContact() {
+		Contact contact = new Contact(
+				&quot;1234&quot;, 
+				&quot;first&quot;, 
+				&quot;last&quot;, 
+				&quot;1234567890&quot;, 
+				&quot;1234 Road Lane&quot;);
+		assertTrue(contact.getID().equals(&quot;1234&quot;));
+		assertTrue(contact.getFirst().equals(&quot;first&quot;));
+		assertTrue(contact.getLast().equals(&quot;last&quot;));
+		assertTrue(contact.getPhone().equals(&quot;1234567890&quot;));
+		assertTrue(contact.getAddress().equals(&quot;1234 Road Lane&quot;));
+	}
+	
+	@Test
+	void testContactIDTooLong() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;12345678901&quot;, &quot;first&quot;, &quot;last&quot;, &quot;1234567890&quot;, &quot;1234&quot;);
+		});
+	}
+	
+	void testContactFirstTooLong() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;1234&quot;, &quot;firstfirstfirstfirst&quot;, &quot;last&quot;, &quot;1234567890&quot;, &quot;1234&quot;);
+		});
+	}
+	
+	void testContactLastTooLong() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;12345678901&quot;, &quot;first&quot;, &quot;lastlastlastlast&quot;, &quot;1234567890&quot;, &quot;1234&quot;);
+		});
+	}
+	
+	void testContactPhoneTooShort() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;12345678901&quot;, &quot;first&quot;, &quot;last&quot;, &quot;12345&quot;, &quot;1234&quot;);
+		});
+	}
+	
+	void testContactPhoneTooLong() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;12345678901&quot;, &quot;first&quot;, &quot;last&quot;, &quot;1234567890123&quot;, &quot;1234&quot;);
+		});
+	}
+	
+	void testContactAddressTooLong() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -&gt; {
+			new Contact(&quot;12345678901&quot;, &quot;first&quot;, &quot;last&quot;, &quot;1234567890&quot;, 
+					&quot;1234 Keith David is the GOAT, but Raphael Sbarge is pretty good too&quot;);
+		});
+	}
+
+}
+</code></pre></div><div class="pane" id="v3-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-java">package test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import MS1.Contact;
+
+class ContactTest {
+
+    private static final String VALID_ID = &quot;1234&quot;;
+    private static final String VALID_FIRST = &quot;First&quot;;
+    private static final String VALID_LAST = &quot;Last&quot;;
+    private static final String VALID_PHONE = &quot;1234567890&quot;;
+    private static final String VALID_ADDRESS = &quot;1234 Road Lane&quot;;
+
+    private static Contact newValidContact() {
+        return new Contact(VALID_ID, VALID_FIRST, VALID_LAST, VALID_PHONE, VALID_ADDRESS);
+    }
+
+    // Construction
+
+    @Test
+    @DisplayName(&quot;A fully valid contact stores every field unchanged&quot;)
+    void constructorStoresAllFields() {
+        Contact contact = newValidContact();
+
+        assertEquals(VALID_ID, contact.getID());
+        assertEquals(VALID_FIRST, contact.getFirst());
+        assertEquals(VALID_LAST, contact.getLast());
+        assertEquals(VALID_PHONE, contact.getPhone());
+        assertEquals(VALID_ADDRESS, contact.getAddress());
+    }
+
+    @Test
+    @DisplayName(&quot;Boundary values at the maximum allowed length are accepted&quot;)
+    void constructorAcceptsMaximumLengths() {
+        Contact contact = new Contact(&quot;1234567890&quot;, &quot;0123456789&quot;, &quot;0123456789&quot;,
+                VALID_PHONE, &quot;123456789012345678901234567890&quot;);
+
+        assertEquals(&quot;1234567890&quot;, contact.getID());
+        assertEquals(&quot;0123456789&quot;, contact.getFirst());
+        assertEquals(30, contact.getAddress().length());
+    }
+
+    // Contact ID
+
+    @Test
+    @DisplayName(&quot;A null contact ID is rejected&quot;)
+    void constructorRejectsNullId() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(null, VALID_FIRST, VALID_LAST, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;An empty contact ID is rejected&quot;)
+    void constructorRejectsEmptyId() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(&quot;&quot;, VALID_FIRST, VALID_LAST, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A contact ID of 11 characters is rejected&quot;)
+    void constructorRejectsLongId() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(&quot;12345678901&quot;, VALID_FIRST, VALID_LAST, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    // Names
+
+    @Test
+    @DisplayName(&quot;A null first name is rejected&quot;)
+    void constructorRejectsNullFirstName() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, null, VALID_LAST, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A first name of 11 characters is rejected&quot;)
+    void constructorRejectsLongFirstName() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, &quot;FirstFirstF&quot;, VALID_LAST, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A null last name is rejected&quot;)
+    void constructorRejectsNullLastName() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, null, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A last name of 11 characters is rejected&quot;)
+    void constructorRejectsLongLastName() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, &quot;LastLastLas&quot;, VALID_PHONE, VALID_ADDRESS));
+    }
+
+    
+    // Phone
+    
+
+    @Test
+    @DisplayName(&quot;A null phone number is rejected&quot;)
+    void constructorRejectsNullPhone() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, null, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A 9-digit phone number is rejected&quot;)
+    void constructorRejectsShortPhone() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, &quot;123456789&quot;, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A single-digit phone number is rejected&quot;)
+    void constructorRejectsSingleDigitPhone() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, &quot;5&quot;, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;An 11-digit phone number is rejected&quot;)
+    void constructorRejectsLongPhone() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, &quot;12345678901&quot;, VALID_ADDRESS));
+    }
+
+    @Test
+    @DisplayName(&quot;A formatted phone number with non-digit characters is rejected&quot;)
+    void constructorRejectsNonNumericPhone() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, &quot;555-123456&quot;, VALID_ADDRESS));
+    }
+
+    
+    // Address
+    
+
+    @Test
+    @DisplayName(&quot;A null address is rejected&quot;)
+    void constructorRejectsNullAddress() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, VALID_PHONE, null));
+    }
+
+    @Test
+    @DisplayName(&quot;An address of 31 characters is rejected&quot;)
+    void constructorRejectsLongAddress() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; new Contact(VALID_ID, VALID_FIRST, VALID_LAST, VALID_PHONE,
+                        &quot;1234567890123456789012345678901&quot;));
+    }
+
+    
+    // Setters
+    
+
+    @Test
+    @DisplayName(&quot;Valid setter values replace the stored field&quot;)
+    void settersUpdateFields() {
+        Contact contact = newValidContact();
+
+        contact.setFirst(&quot;Dustin&quot;);
+        contact.setLast(&quot;Ledbetter&quot;);
+        contact.setPhone(&quot;9876543210&quot;);
+        contact.setAddress(&quot;1234 Enhancement Way&quot;);
+
+        assertEquals(&quot;Dustin&quot;, contact.getFirst());
+        assertEquals(&quot;Ledbetter&quot;, contact.getLast());
+        assertEquals(&quot;9876543210&quot;, contact.getPhone());
+        assertEquals(&quot;1234 Enhancement Way&quot;, contact.getAddress());
+    }
+
+    @Test
+    @DisplayName(&quot;setFirst rejects null and leaves the contact unchanged&quot;)
+    void setFirstRejectsNull() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setFirst(null));
+        assertEquals(VALID_FIRST, contact.getFirst());
+    }
+
+    @Test
+    @DisplayName(&quot;setFirst rejects an over-length value and leaves the contact unchanged&quot;)
+    void setFirstRejectsLongValue() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setFirst(&quot;FirstFirstF&quot;));
+        assertEquals(VALID_FIRST, contact.getFirst());
+    }
+
+    @Test
+    @DisplayName(&quot;setLast rejects null and leaves the contact unchanged&quot;)
+    void setLastRejectsNull() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setLast(null));
+        assertEquals(VALID_LAST, contact.getLast());
+    }
+
+    @Test
+    @DisplayName(&quot;setLast rejects an over-length value and leaves the contact unchanged&quot;)
+    void setLastRejectsLongValue() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setLast(&quot;LastLastLas&quot;));
+        assertEquals(VALID_LAST, contact.getLast());
+    }
+
+    @Test
+    @DisplayName(&quot;setPhone rejects null and leaves the contact unchanged&quot;)
+    void setPhoneRejectsNull() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setPhone(null));
+        assertEquals(VALID_PHONE, contact.getPhone());
+    }
+
+    @Test
+    @DisplayName(&quot;setPhone rejects a non-numeric value and leaves the contact unchanged&quot;)
+    void setPhoneRejectsNonNumeric() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setPhone(&quot;555-123456&quot;));
+        assertEquals(VALID_PHONE, contact.getPhone());
+    }
+
+    @Test
+    @DisplayName(&quot;setAddress rejects null and leaves the contact unchanged&quot;)
+    void setAddressRejectsNull() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class, () -&gt; contact.setAddress(null));
+        assertEquals(VALID_ADDRESS, contact.getAddress());
+    }
+
+    @Test
+    @DisplayName(&quot;setAddress rejects an over-length value and leaves the contact unchanged&quot;)
+    void setAddressRejectsLongValue() {
+        Contact contact = newValidContact();
+
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; contact.setAddress(&quot;1234567890123456789012345678901&quot;));
+        assertEquals(VALID_ADDRESS, contact.getAddress());
+    }
+
+    // Diagnostics
+
+    @Test
+    @DisplayName(&quot;toString masks all but the last four digits of the phone number&quot;)
+    void toStringMasksPhone() {
+        Contact contact = newValidContact();
+        String rendered = contact.toString();
+
+        assertEquals(false, rendered.contains(VALID_PHONE));
+        assertEquals(true, rendered.contains(&quot;7890&quot;));
+    }
+}
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">ContactServicesTest.java</span>
+    <span class="viewer-note">Expanded to cover collection behavior and edge cases.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v4-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v4-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v4-original" data-version="original" role="tabpanel"><pre><code class="language-java">package test;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class ContactServicesTest {
+	
+	@BeforeEach
+	void setUp() {
+		contactService = ContactServices.getInstance();
+		contactService.reset();
+	}
+
+	@Test
+	void addContactTest() {
+		String contactId = contactServices.addContact(&quot;first&quot;, &quot;last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+		
+		assertNotNull(contactId);
+		assertEquals(&quot;1&quot;, contactId);
+	}
+
+}
+</code></pre></div><div class="pane" id="v4-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-java">package test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import MS1.Contact; 
+import MS1.ContactServices;
+
+class ContactServicesTest {
+
+    private ContactServices contactServices;
+
+    @BeforeEach
+    void setUp() {
+        contactServices = ContactServices.getInstance();
+        contactServices.reset();
+    }
+
+    // Singleton
+
+    @Test
+    @DisplayName(&quot;getInstance returns the same object on every call&quot;)
+    void getInstanceReturnsSingleton() {
+        assertEquals(ContactServices.getInstance(), ContactServices.getInstance());
+    }
+
+    @Test
+    @DisplayName(&quot;reset clears storage and restarts ID generation at 1&quot;)
+    void resetClearsState() {
+        contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+        contactServices.addContact(&quot;Other&quot;, &quot;Person&quot;, &quot;1234567891&quot;, &quot;456 Green St&quot;);
+        assertEquals(2, contactServices.getContactCount());
+
+        contactServices.reset();
+
+        assertEquals(0, contactServices.getContactCount());
+        assertEquals(&quot;1&quot;, contactServices.addContact(&quot;New&quot;, &quot;Contact&quot;, &quot;1234567892&quot;, &quot;789 Blue Rd&quot;));
+    }
+
+    
+    // Add
+    
+
+    @Test
+    @DisplayName(&quot;addContact returns a non-null identifier and stores the contact&quot;)
+    void addContactStoresContact() {
+        String contactId = contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+
+        assertNotNull(contactId);
+        assertEquals(&quot;1&quot;, contactId);
+        assertEquals(1, contactServices.getContactCount());
+
+        Contact stored = contactServices.getContact(contactId);
+        assertNotNull(stored);
+        assertEquals(&quot;First&quot;, stored.getFirst());
+        assertEquals(&quot;1234567890&quot;, stored.getPhone());
+    }
+
+    @Test
+    @DisplayName(&quot;addContact issues sequential identifiers&quot;)
+    void addContactIssuesSequentialIds() {
+        assertEquals(&quot;1&quot;, contactServices.addContact(&quot;A&quot;, &quot;One&quot;, &quot;1111111111&quot;, &quot;1 A St&quot;));
+        assertEquals(&quot;2&quot;, contactServices.addContact(&quot;B&quot;, &quot;Two&quot;, &quot;2222222222&quot;, &quot;2 B St&quot;));
+        assertEquals(&quot;3&quot;, contactServices.addContact(&quot;C&quot;, &quot;Three&quot;, &quot;3333333333&quot;, &quot;3 C St&quot;));
+        assertEquals(3, contactServices.getContactCount());
+    }
+
+    @Test
+    @DisplayName(&quot;addContact rejects invalid input and stores nothing&quot;)
+    void addContactRejectsInvalidInput() {
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;555-1234&quot;, &quot;123 Purple Ave&quot;));
+
+        assertEquals(0, contactServices.getContactCount());
+    }
+
+    @Test
+    @DisplayName(&quot;Storage exceeds the original 9,999-contact ceiling&quot;)
+    void addContactHasNoCapacityLimit() {
+        for (int i = 0; i &lt; 20000; i++) {
+            contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+        }
+
+        assertEquals(20000, contactServices.getContactCount());
+        assertNotNull(contactServices.getContact(&quot;20000&quot;));
+    }
+
+    
+    // Delete
+    
+
+    @Test
+    @DisplayName(&quot;deleteContact removes an existing contact and reports success once&quot;)
+    void deleteContactRemovesContact() {
+        String contactId = contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+
+        assertTrue(contactServices.deleteContact(contactId));
+        assertFalse(contactServices.deleteContact(contactId));
+        assertNull(contactServices.getContact(contactId));
+        assertEquals(0, contactServices.getContactCount());
+    }
+
+    @Test
+    @DisplayName(&quot;deleteContact returns false for an unknown or null identifier&quot;)
+    void deleteContactHandlesMissingIds() {
+        assertFalse(contactServices.deleteContact(&quot;does-not-exist&quot;));
+        assertFalse(contactServices.deleteContact(null));
+    }
+
+    @Test
+    @DisplayName(&quot;Deleting one contact leaves the remaining contacts intact&quot;)
+    void deleteContactPreservesOtherContacts() {
+        String first = contactServices.addContact(&quot;A&quot;, &quot;One&quot;, &quot;1111111111&quot;, &quot;1 A St&quot;);
+        String second = contactServices.addContact(&quot;B&quot;, &quot;Two&quot;, &quot;2222222222&quot;, &quot;2 B St&quot;);
+        String third = contactServices.addContact(&quot;C&quot;, &quot;Three&quot;, &quot;3333333333&quot;, &quot;3 C St&quot;);
+
+        assertTrue(contactServices.deleteContact(second));
+
+        assertEquals(2, contactServices.getContactCount());
+        assertNotNull(contactServices.getContact(first));
+        assertNull(contactServices.getContact(second));
+        assertNotNull(contactServices.getContact(third));
+        assertEquals(&quot;C&quot;, contactServices.getContact(third).getFirst());
+    }
+
+    
+    // Update
+    
+
+    @Test
+    @DisplayName(&quot;Each update method changes the stored value and reports success&quot;)
+    void updateMethodsChangeStoredValues() {
+        String contactId = contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+
+        assertTrue(contactServices.updateFirstName(contactId, &quot;Dustin&quot;));
+        assertTrue(contactServices.updateLastName(contactId, &quot;Ledbetter&quot;));
+        assertTrue(contactServices.updatePhone(contactId, &quot;9876543210&quot;));
+        assertTrue(contactServices.updateAddress(contactId, &quot;42 Enhancement Way&quot;));
+
+        Contact stored = contactServices.getContact(contactId);
+        assertEquals(&quot;Dustin&quot;, stored.getFirst());
+        assertEquals(&quot;Ledbetter&quot;, stored.getLast());
+        assertEquals(&quot;9876543210&quot;, stored.getPhone());
+        assertEquals(&quot;42 Enhancement Way&quot;, stored.getAddress());
+    }
+
+    @Test
+    @DisplayName(&quot;Every update method returns false for an unknown identifier&quot;)
+    void updateMethodsReturnFalseForMissingContact() {
+        assertFalse(contactServices.updateFirstName(&quot;missing&quot;, &quot;Dustin&quot;));
+        assertFalse(contactServices.updateLastName(&quot;missing&quot;, &quot;Ledbetter&quot;));
+        assertFalse(contactServices.updatePhone(&quot;missing&quot;, &quot;9876543210&quot;));
+        assertFalse(contactServices.updateAddress(&quot;missing&quot;, &quot;42 Enhancement Way&quot;));
+    }
+
+    @Test
+    @DisplayName(&quot;Updates enforce validation, which the original setters bypassed&quot;)
+    void updateMethodsEnforceValidation() {
+        String contactId = contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; contactServices.updateFirstName(contactId, null));
+        assertThrows(IllegalArgumentException.class,
+                () -&gt; contactServices.updatePhone(contactId, &quot;555-1234&quot;));
+
+        Contact stored = contactServices.getContact(contactId);
+        assertEquals(&quot;First&quot;, stored.getFirst());
+        assertEquals(&quot;1234567890&quot;, stored.getPhone());
+    }
+
+    
+    // Read views
+    
+
+    @Test
+    @DisplayName(&quot;getContact returns null for an unknown identifier&quot;)
+    void getContactReturnsNullForMissingId() {
+        assertNull(contactServices.getContact(&quot;missing&quot;));
+    }
+
+    @Test
+    @DisplayName(&quot;getAllContacts exposes a read-only view of storage&quot;)
+    void getAllContactsIsUnmodifiable() {
+        String contactId = contactServices.addContact(&quot;First&quot;, &quot;Last&quot;, &quot;1234567890&quot;, &quot;123 Purple Ave&quot;);
+        Map&lt;String, Contact&gt; view = contactServices.getAllContacts();
+
+        assertEquals(1, view.size());
+        assertTrue(view.containsKey(contactId));
+        assertThrows(UnsupportedOperationException.class, () -&gt; view.remove(contactId));
+    }
+}
+</code></pre></div></div>
+</div>
+</section>
+
+<section>
+  <h2>Course outcome alignment</h2>
+  <div class="outcome"><strong>Outcome 3 — Design and evaluate computing solutions, managing trade-offs</strong><span>The storage change was treated as a trade rather than a free upgrade. The HashMap costs more memory per record and gives up insertion order; it wins here only because this service is lookup heavy.</span></div><div class="outcome"><strong>Outcome 4 — Well-founded and innovative techniques, skills, and tools</strong><span>The Java Collections Framework and JUnit 5 were used to redesign the validation layer around single-responsibility methods.</span></div>
+</section>
+
+<div class="pager"><a class="btn secondary" href="code-review.html">&larr; Code Review</a><a class="btn" href="enhancement-2.html">Enhancement 2 &rarr;</a></div>
+</main>
+
+<footer class="site">
+  <p>Dustin Ledbetter &middot; CS 499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/portfolio.js"></script>
+</body>
+</html>

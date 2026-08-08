@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review | CS 499 ePortfolio</title>
+<meta name="description" content="Dustin Ledbetter — Computer Science capstone ePortfolio, Southern New Hampshire University.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+
+<nav class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">Dustin Ledbetter</a>
+    <a class="navlink" href="index.html">Home</a><a class="navlink active" href="code-review.html">Code Review</a><a class="navlink" href="enhancement-1.html">Software Design</a><a class="navlink" href="enhancement-2.html">Algorithms</a><a class="navlink" href="enhancement-3.html">Databases</a>
+  </div>
+</nav>
+
+<header class="page">
+  <p class="eyebrow">Milestone One</p>
+  <h1>Code Review</h1>
+  <p class="tagline">Existing functionality, code analysis, and the enhancement plan</p>
+</header>
+
+<main>
+<section>
+  <h2>Informal Code Review</h2>
+  <p class="lede">A walkthrough of the three original artifacts, recorded before any enhancement
+  work started.</p>
+
+  <div class="video-wrap">
+    <iframe src="https://www.youtube-nocookie.com/embed/B7c0iP9zfA4"
+            title="CS 499 Code Review — Dustin Ledbetter"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen></iframe>
+  </div>
+  <p><a href="https://youtu.be/B7c0iP9zfA4" target="_blank" rel="noopener">Open on YouTube</a></p>
+</section>
+
+<section>
+  <h2>What the review covers</h2>
+
+  <div class="card">
+    <h3>Existing functionality</h3>
+    <p>A walkthrough of each artifact as it stood before enhancement: what the code does, how it
+    is organized, and what it was originally built to accomplish.</p>
+  </div>
+
+  <div class="card">
+    <h3>Code analysis</h3>
+    <p>Where each artifact fell short — structure, logic, efficiency, functionality, security,
+    testing, commenting, and documentation. Notably: validation that could be bypassed through
+    setters in the Java contact service, an unbalanced search tree that degrades to a linked list
+    on sorted input, and database credentials hard-coded into the Python source.</p>
+  </div>
+
+  <div class="card">
+    <h3>Planned enhancements</h3>
+    <p>What I intended to change in each of the three categories, the specific skills each change
+    would demonstrate, and how the planned work maps onto the five course outcomes.</p>
+  </div>
+</section>
+
+<section>
+  <h2>The code as reviewed</h2>
+  <p>The original, pre-enhancement source discussed in the video is preserved on each artifact
+  page under the <strong>Original</strong> tab, so it can be compared directly against the
+  enhanced version.</p>
+  <div class="grid">
+    <div class="card artifact-card">
+      <p class="meta">Enhancement 1</p>
+      <h3>Contact Service</h3>
+      <p>Java. Validation strategy and backing data structure.</p>
+      <a class="btn" href="enhancement-1.html">View artifact</a>
+    </div>
+    <div class="card artifact-card">
+      <p class="meta">Enhancement 2</p>
+      <h3>Course Planner</h3>
+      <p>C++. Binary search tree converted to a self-balancing AVL tree.</p>
+      <a class="btn" href="enhancement-2.html">View artifact</a>
+    </div>
+    <div class="card artifact-card">
+      <p class="meta">Enhancement 3</p>
+      <h3>Animal Shelter Dashboard</h3>
+      <p>Python and MongoDB. Aggregation, indexing, and credential handling.</p>
+      <a class="btn" href="enhancement-3.html">View artifact</a>
+    </div>
+  </div>
+</section>
+
+<div class="pager"><a class="btn secondary" href="index.html">&larr; Home</a><a class="btn" href="enhancement-1.html">Enhancement 1 &rarr;</a></div>
+</main>
+
+<footer class="site">
+  <p>Dustin Ledbetter &middot; CS 499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/portfolio.js"></script>
+</body>
+</html>

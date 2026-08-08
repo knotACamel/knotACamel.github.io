@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animal Shelter Dashboard | CS 499 ePortfolio</title>
+<meta name="description" content="Dustin Ledbetter — Computer Science capstone ePortfolio, Southern New Hampshire University.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+
+<nav class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">Dustin Ledbetter</a>
+    <a class="navlink" href="index.html">Home</a><a class="navlink" href="code-review.html">Code Review</a><a class="navlink" href="enhancement-1.html">Software Design</a><a class="navlink" href="enhancement-2.html">Algorithms</a><a class="navlink active" href="enhancement-3.html">Databases</a>
+  </div>
+</nav>
+
+<header class="page">
+  <p class="eyebrow">Enhancement 3 — Databases</p>
+  <h1>Animal Shelter Dashboard</h1>
+  <p class="tagline">A client/server dashboard over a MongoDB animal shelter database, with a data access layer cleanly separated from the presentation layer.</p>
+</header>
+
+<main>
+<section>
+  <ul class="tags"><li>Python</li><li>MongoDB</li><li>Aggregation Pipeline</li><li>Compound Indexes</li><li>Dash</li></ul>
+  <p class="lede">A client/server dashboard over a MongoDB animal shelter database, with a data access layer cleanly separated from the presentation layer. The enhancement pushed reporting work down into the database, added index management with measurement to prove it, and moved credentials out of the source.</p>
+  <p><strong>Original course:</strong> CS 340 — Advanced Programming Concepts</p>
+</section>
+
+<section>
+  <h2>Narrative</h2>
+  <div class="narrative"><p>This artifact was created about 8 months ago for a project focusing on designing a client server dashboard during CS340. It includes a py and ipynb file.  I chose it because it heavily focused on database query and manipulation of records. It also had a clean separation between the database layer and the presentation layer. I could add an aggregation pipeline to this and consider it more of an enhancement instead of a complete rewrite. This showcases my abilities in several ways. The AnimalShelter class presents a data access later with one method per operation, so the rest of the application never touches the driver.</p>
+<p>The artifact has been improved in several ways. Get_breed_outcome_report() makes MongoDB count the records instead of offloading the job onto pandas. Explain_query and timing helpers test performance by implementing COLLSCAN-to-IXSCAN. Credentials were moved to a .env file which is preferable to hard coding them into the program. This enhancement meets outcome 3 and 4 like I mentioned in module 1, and also outcome 5 by moving credentials to their own environment files for enhanced security.</p>
+<p>Some difficulties I encountered: Compound index field order, an annoying empty-result crash that came up in some edge cases, and positional column access. MongoDB can use a leading subset of fields but not a trailing one, and a range condition stops the index from narrowing something that comes after it, which is why age needed to go last. The empty-result crash was a result of dropping the _id column unconditionally, which caused problems when a query matched no  records. For positional columns, reading the coordinates as is worked until the schema gained or lost a field. Here, it was better for the system to fail visibly and loudly than to point to the wrong data in a much more easy to miss manner.</p></div>
+</section>
+
+<section>
+  <h2>What changed, and why</h2>
+  <div class="card"><h3>Let the database do the counting</h3><p>get_breed_outcome_report() uses an aggregation pipeline so MongoDB counts records server-side, instead of pulling the full result set into pandas and counting in application memory.</p></div><div class="card"><h3>Indexes, with evidence</h3><p>explain_query() and the timing helpers demonstrate the COLLSCAN-to-IXSCAN transition rather than asserting the index helped. Compound field order matters: MongoDB can use a leading subset of an index but not a trailing one, and a range condition stops the index narrowing anything after it — which is why age had to go last.</p></div><div class="card"><h3>Credentials out of the source</h3><p>Connection details moved to environment variables loaded from a .env file, which is excluded from version control. Only env.example is published here.</p></div><div class="card"><h3>Failing loudly beats failing quietly</h3><p>Dropping the _id column unconditionally crashed on queries that matched nothing, and positional column access silently pointed at the wrong data whenever the schema gained or lost a field. Both now fail visibly instead of quietly misreporting.</p></div>
+</section>
+
+<section>
+  <h2>Original vs. Enhanced</h2>
+  <p>Use the <strong>Original</strong> and <strong>Enhanced</strong> tabs to compare each file.
+  Code is collapsed by default.</p>
+  <div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">CRUD_Python_Module.py</span>
+    <span class="viewer-note">The data access layer. Grew from 85 to 306 lines with aggregation, index management, and timing.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="true" aria-controls="v8-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="false" aria-controls="v8-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v8-original" data-version="original" role="tabpanel"><pre><code class="language-python"># Example Python Code to Insert a Document 
+
+from pymongo import MongoClient 
+from bson.objectid import ObjectId 
+
+class AnimalShelter(object): 
+    &quot;&quot;&quot; CRUD operations for Animal collection in MongoDB &quot;&quot;&quot; 
+
+    def __init__(self): 
+        # Initializing the MongoClient. This helps to access the MongoDB 
+        # databases and collections. This is hard-wired to use the aac 
+        # database, the animals collection, and the aac user. 
+        # 
+        # You must edit the password below for your environment. 
+        # 
+        # Connection Variables 
+        # 
+        USER = &#x27;aacuser&#x27; 
+        PASS = &#x27;howler1&#x27; 
+        HOST = &#x27;localhost&#x27; 
+        PORT = 27017 
+        DB = &#x27;aac&#x27; 
+        COL = &#x27;animals&#x27; 
+        # 
+        # Initialize Connection 
+        # 
+        self.client = MongoClient(&#x27;mongodb://%s:%s@%s:%d/?authSource=%s&#x27; % (USER,PASS,HOST,PORT, DB)) 
+        self.database = self.client[&#x27;%s&#x27; % (DB)] 
+        self.collection = self.database[&#x27;%s&#x27; % (COL)] 
+
+    # Create a method to return the next available record number for use in the create method
+            
+    # Complete this create method to implement the C in CRUD. 
+    def create(self, data):
+        if data is not None: 
+            try:
+                result = self.database.animals.insert_one(data)  # data should be dictionary
+                if result.inserted_id:
+                    return True
+                else:
+                    return False
+            except Exception as e:
+                print(f&quot;Error during insert: {e}&quot;)
+                return False
+        else: 
+            print(&quot;Nothing to save, because data parameter is empty.&quot;)
+            return False
+
+    # Create method to implement the R in CRUD.
+    def read(self, query):
+        try:
+            if query is not None:
+                cursor = self.database.animals.find(query)
+                result = list(cursor)
+                return result
+            else:
+                return []
+        except Exception as e:
+            print(f&quot;Error during query: {e}&quot;)
+            return []
+
+    def update(self, query, update_data):
+        try:
+            if query is not None and update_data is not None:
+                result = self.database.animals.update_many(query, {&quot;$set&quot;: update_data})
+                return result.modified_count
+            else:
+                print(&quot;Query and update data cannot be empty&quot;)
+                return 0
+        except Exception as e:
+            print(f&quot;Error during update: {e}&quot;)
+            return 0
+    
+    
+    def delete(self, query):
+        try:
+            if query is not None:
+                result = self.database.animals.delete_many(query)
+                return result.deleted_count
+            else:
+                print(&quot;Query cannot be empty&quot;)
+                return 0
+        except Exception as e:
+            print(f&quot;Error during delete: {e}&quot;)
+            return 0
+        </code></pre></div><div class="pane" id="v8-enhanced" data-version="enhanced" role="tabpanel" hidden><pre><code class="language-python">import logging
+import os
+import statistics
+import time
+
+from pymongo import ASCENDING, MongoClient
+from pymongo.errors import PyMongoError
+
+logger = logging.getLogger(__name__)
+
+
+class AnimalShelter(object):
+
+    def __init__(self, username=None, password=None, host=None, port=None,
+                 db=None, collection=None):
+
+        username = username or os.environ.get(&#x27;AAC_USER&#x27;)
+        password = password or os.environ.get(&#x27;AAC_PASS&#x27;)
+        host = host or os.environ.get(&#x27;AAC_HOST&#x27;, &#x27;localhost&#x27;)
+        port = int(port or os.environ.get(&#x27;AAC_PORT&#x27;, 27017))
+        db = db or os.environ.get(&#x27;AAC_DB&#x27;, &#x27;aac&#x27;)
+        collection = collection or os.environ.get(&#x27;AAC_COL&#x27;, &#x27;animals&#x27;)
+
+        if not username or not password:
+            raise ValueError(
+                &#x27;Database credentials are missing. Set AAC_USER and AAC_PASS &#x27;
+                &#x27;in the environment, or pass them to AnimalShelter().&#x27;
+            )
+
+        uri = &#x27;mongodb://%s:%s@%s:%d/?authSource=%s&#x27; % (
+            username, password, host, port, db
+        )
+        self.client = MongoClient(uri)
+        self.database = self.client[db]
+        self.collection = self.database[collection]
+        logger.info(&#x27;Connected to %s.%s at %s:%d&#x27;, db, collection, host, port)
+
+    @staticmethod
+    def _require_query(query, operation):
+        if query is None or query == {}:
+            raise ValueError(
+                &#x27;A non-empty query is required for %s. An empty query would &#x27;
+                &#x27;match every document in the collection.&#x27; % operation
+            )
+        
+    # Create
+    def create(self, data):
+        if not data:
+            logger.warning(&#x27;create() called with no data; nothing was saved.&#x27;)
+            return False
+        if not isinstance(data, dict):
+            raise TypeError(&#x27;create() expects a dictionary.&#x27;)
+
+        try:
+            result = self.collection.insert_one(data)
+            return result.inserted_id is not None
+        except PyMongoError:
+            logger.exception(&#x27;Insert failed.&#x27;)
+            return False
+
+    # Read
+    def read(self, query=None, projection=None, limit=0):
+        query = query if query is not None else {}
+        try:
+            cursor = self.collection.find(query, projection)
+            if limit:
+                cursor = cursor.limit(limit)
+            return list(cursor)
+        except PyMongoError:
+            logger.exception(&#x27;Query failed: %s&#x27;, query)
+            return []
+
+    def get_breed_outcome_report(self, min_count=1, limit=None):
+        pipeline = [
+            {&#x27;$match&#x27;: {&#x27;outcome_type&#x27;: {&#x27;$exists&#x27;: True, &#x27;$ne&#x27;: None}}},
+
+            {&#x27;$group&#x27;: {
+                &#x27;_id&#x27;: {&#x27;breed&#x27;: &#x27;$breed&#x27;, &#x27;outcome_type&#x27;: &#x27;$outcome_type&#x27;},
+                &#x27;total&#x27;: {&#x27;$sum&#x27;: 1},
+            }},
+
+            {&#x27;$match&#x27;: {&#x27;total&#x27;: {&#x27;$gte&#x27;: int(min_count)}}},
+
+            {&#x27;$sort&#x27;: {&#x27;total&#x27;: -1, &#x27;_id.breed&#x27;: 1, &#x27;_id.outcome_type&#x27;: 1}},
+
+            {&#x27;$project&#x27;: {
+                &#x27;_id&#x27;: 0,
+                &#x27;breed&#x27;: &#x27;$_id.breed&#x27;,
+                &#x27;outcome_type&#x27;: &#x27;$_id.outcome_type&#x27;,
+                &#x27;total&#x27;: 1,
+            }},
+        ]
+
+        if limit:
+            pipeline.append({&#x27;$limit&#x27;: int(limit)})
+
+        try:
+            return list(self.collection.aggregate(pipeline))
+        except PyMongoError:
+            logger.exception(&#x27;Breed/outcome report failed.&#x27;)
+            return []
+
+    def get_outcome_totals(self):
+        pipeline = [
+            {&#x27;$match&#x27;: {&#x27;outcome_type&#x27;: {&#x27;$exists&#x27;: True, &#x27;$ne&#x27;: None}}},
+            {&#x27;$group&#x27;: {&#x27;_id&#x27;: &#x27;$outcome_type&#x27;, &#x27;total&#x27;: {&#x27;$sum&#x27;: 1}}},
+            {&#x27;$sort&#x27;: {&#x27;total&#x27;: -1}},
+            {&#x27;$project&#x27;: {&#x27;_id&#x27;: 0, &#x27;outcome_type&#x27;: &#x27;$_id&#x27;, &#x27;total&#x27;: 1}},
+        ]
+
+        try:
+            return list(self.collection.aggregate(pipeline))
+        except PyMongoError:
+            logger.exception(&#x27;Outcome totals report failed.&#x27;)
+            return []
+
+    def get_rescue_candidate_counts(self, rescue_queries):
+        counts = {}
+        for name, query in (rescue_queries or {}).items():
+            try:
+                counts[name] = self.collection.count_documents(query)
+            except PyMongoError:
+                logger.exception(&#x27;Count failed for profile: %s&#x27;, name)
+                counts[name] = 0
+        return counts
+
+    # Update
+    def update_one(self, query, update_data):
+        self._require_query(query, &#x27;update_one&#x27;)
+        if not update_data:
+            raise ValueError(&#x27;update_one() requires update data.&#x27;)
+
+        try:
+            result = self.collection.update_one(query, {&#x27;$set&#x27;: update_data})
+            return result.modified_count
+        except PyMongoError:
+            logger.exception(&#x27;Update failed: %s&#x27;, query)
+            return 0
+
+    def update_many(self, query, update_data):
+        self._require_query(query, &#x27;update_many&#x27;)
+        if not update_data:
+            raise ValueError(&#x27;update_many() requires update data.&#x27;)
+
+        try:
+            result = self.collection.update_many(query, {&#x27;$set&#x27;: update_data})
+            return result.modified_count
+        except PyMongoError:
+            logger.exception(&#x27;Update failed: %s&#x27;, query)
+            return 0
+
+    def update(self, query, update_data):
+        return self.update_many(query, update_data)
+
+    # Delete
+    def delete_one(self, query):
+        self._require_query(query, &#x27;delete_one&#x27;)
+        try:
+            result = self.collection.delete_one(query)
+            return result.deleted_count
+        except PyMongoError:
+            logger.exception(&#x27;Delete failed: %s&#x27;, query)
+            return 0
+
+    def delete_many(self, query):
+        self._require_query(query, &#x27;delete_many&#x27;)
+        try:
+            result = self.collection.delete_many(query)
+            return result.deleted_count
+        except PyMongoError:
+            logger.exception(&#x27;Delete failed: %s&#x27;, query)
+            return 0
+
+    def delete(self, query):
+        return self.delete_many(query)
+
+    DASHBOARD_INDEX_NAME = &#x27;idx_rescue_filters&#x27;
+    REPORT_INDEX_NAME = &#x27;idx_breed_outcome&#x27;
+
+    def create_dashboard_index(self):
+        try:
+            name = self.collection.create_index(
+                [
+                    (&#x27;breed&#x27;, ASCENDING),
+                    (&#x27;sex_upon_outcome&#x27;, ASCENDING),
+                    (&#x27;age_upon_outcome_in_weeks&#x27;, ASCENDING),
+                ],
+                name=self.DASHBOARD_INDEX_NAME,
+                background=True,
+            )
+            logger.info(&#x27;Created dashboard index: %s&#x27;, name)
+            return name
+        except PyMongoError:
+            logger.exception(&#x27;Could not create the dashboard index.&#x27;)
+            return None
+
+    def create_reporting_index(self):
+        try:
+            name = self.collection.create_index(
+                [
+                    (&#x27;breed&#x27;, ASCENDING),
+                    (&#x27;outcome_type&#x27;, ASCENDING),
+                ],
+                name=self.REPORT_INDEX_NAME,
+                background=True,
+            )
+            logger.info(&#x27;Created reporting index: %s&#x27;, name)
+            return name
+        except PyMongoError:
+            logger.exception(&#x27;Could not create the reporting index.&#x27;)
+            return None
+
+    def create_all_indexes(self):
+        return [name for name in (self.create_dashboard_index(),
+                                  self.create_reporting_index())
+                if name]
+
+    def drop_enhancement_indexes(self):
+        dropped = []
+        existing = self.list_index_names()
+        for name in (self.DASHBOARD_INDEX_NAME, self.REPORT_INDEX_NAME):
+            if name not in existing:
+                continue
+            try:
+                self.collection.drop_index(name)
+                dropped.append(name)
+                logger.info(&#x27;Dropped index: %s&#x27;, name)
+            except PyMongoError:
+                logger.exception(&#x27;Could not drop index: %s&#x27;, name)
+        return dropped
+
+    def list_index_names(self):
+        try:
+            return list(self.collection.index_information().keys())
+        except PyMongoError:
+            logger.exception(&#x27;Could not read index information.&#x27;)
+            return []
+
+    def explain_query(self, query, projection=None):
+        try:
+            raw = self.collection.find(
+                query or {}, projection
+            ).explain()
+        except PyMongoError:
+            logger.exception(&#x27;Explain failed for query: %s&#x27;, query)
+            return {}
+
+        execution = raw.get(&#x27;executionStats&#x27;, {})
+        winning = raw.get(&#x27;queryPlanner&#x27;, {}).get(&#x27;winningPlan&#x27;, {})
+
+        leaf = winning
+        while isinstance(leaf, dict) and &#x27;inputStage&#x27; in leaf:
+            leaf = leaf[&#x27;inputStage&#x27;]
+
+        return {
+            &#x27;stage&#x27;: leaf.get(&#x27;stage&#x27;) if isinstance(leaf, dict) else None,
+            &#x27;index&#x27;: leaf.get(&#x27;indexName&#x27;) if isinstance(leaf, dict) else None,
+            &#x27;docs_examined&#x27;: execution.get(&#x27;totalDocsExamined&#x27;),
+            &#x27;keys_examined&#x27;: execution.get(&#x27;totalKeysExamined&#x27;),
+            &#x27;docs_returned&#x27;: execution.get(&#x27;nReturned&#x27;),
+            &#x27;millis&#x27;: execution.get(&#x27;executionTimeMillis&#x27;),
+        }
+
+    def time_query(self, query, projection=None, repeat=5, warmup=1):
+        query = query or {}
+        for _ in range(max(0, int(warmup))):
+            list(self.collection.find(query, projection))
+
+        timings = []
+        document_count = 0
+        for _ in range(max(1, int(repeat))):
+            start = time.perf_counter()
+            results = list(self.collection.find(query, projection))
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            timings.append(elapsed_ms)
+            document_count = len(results)
+
+        return {
+            &#x27;runs&#x27;: len(timings),
+            &#x27;best_ms&#x27;: round(min(timings), 3),
+            &#x27;median_ms&#x27;: round(statistics.median(timings), 3),
+            &#x27;mean_ms&#x27;: round(statistics.fmean(timings), 3),
+            &#x27;worst_ms&#x27;: round(max(timings), 3),
+            &#x27;docs&#x27;: document_count,
+        }
+
+    def time_aggregation(self, pipeline, repeat=5, warmup=1):
+        for _ in range(max(0, int(warmup))):
+            list(self.collection.aggregate(pipeline))
+
+        timings = []
+        row_count = 0
+        for _ in range(max(1, int(repeat))):
+            start = time.perf_counter()
+            results = list(self.collection.aggregate(pipeline))
+            timings.append((time.perf_counter() - start) * 1000)
+            row_count = len(results)
+
+        return {
+            &#x27;runs&#x27;: len(timings),
+            &#x27;best_ms&#x27;: round(min(timings), 3),
+            &#x27;median_ms&#x27;: round(statistics.median(timings), 3),
+            &#x27;mean_ms&#x27;: round(statistics.fmean(timings), 3),
+            &#x27;worst_ms&#x27;: round(max(timings), 3),
+            &#x27;rows&#x27;: row_count,
+        }
+</code></pre></div></div>
+</div>
+<div class="viewer">
+  <div class="viewer-head">
+    <span class="viewer-name">env.example</span>
+    <span class="viewer-note">New file. Template for the credentials that used to be hard-coded; the real .env stays out of version control.</span>
+    <div class="tabs" role="tablist"><button class="tab" type="button" role="tab" data-version="original" aria-selected="false" aria-controls="v9-original">Original</button><button class="tab" type="button" role="tab" data-version="enhanced" aria-selected="true" aria-controls="v9-enhanced">Enhanced</button></div>
+    <button class="toggle-code" type="button" aria-expanded="false">Show code</button>
+  </div>
+  <div class="viewer-body" hidden><div class="pane" id="v9-original" data-version="original" role="tabpanel" hidden><p class="empty-pane">Not present in the original artifact — this file was added as part of the enhancement.</p></div><div class="pane" id="v9-enhanced" data-version="enhanced" role="tabpanel"><pre><code class="language-ini">AAC_USER=aacuser
+AAC_PASS=1234
+AAC_HOST=localhost
+AAC_PORT=27017
+AAC_DB=aac
+AAC_COL=animals
+</code></pre></div></div>
+</div>
+</section>
+
+<section>
+  <h2>Course outcome alignment</h2>
+  <div class="outcome"><strong>Outcome 3 — Design and evaluate computing solutions, managing trade-offs</strong><span>Index design was weighed explicitly: each index speeds reads but costs write throughput and storage, and compound field order determines which queries benefit.</span></div><div class="outcome"><strong>Outcome 4 — Well-founded and innovative techniques, skills, and tools</strong><span>Aggregation pipelines, explain plans, and timing instrumentation used to measure rather than assume.</span></div><div class="outcome"><strong>Outcome 5 — Develop a security mindset</strong><span>Hard-coded credentials removed from source and relocated to environment configuration kept out of version control.</span></div>
+</section>
+
+<div class="pager"><a class="btn secondary" href="enhancement-2.html">&larr; Enhancement 2</a><span></span></div>
+</main>
+
+<footer class="site">
+  <p>Dustin Ledbetter &middot; CS 499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/portfolio.js"></script>
+</body>
+</html>

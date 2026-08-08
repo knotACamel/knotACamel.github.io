@@ -1,0 +1,6 @@
+AAC_USER=aacuser
+AAC_PASS=1234
+AAC_HOST=localhost
+AAC_PORT=27017
+AAC_DB=aac
+AAC_COL=animals
